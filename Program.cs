@@ -6,6 +6,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Collections.Generic;
 
+namespace WeatherApp;
+
 class Program
 {
     static readonly HttpClient client = new HttpClient();
@@ -110,7 +112,6 @@ class Program
 
     public static void SaveLogEntry(WeatherLogEntry logEntry)
     {
-        // Read the existing entries
         List<WeatherLogEntry> entries;
         if (File.Exists("weatherLogEntries.json"))
         {
@@ -122,10 +123,8 @@ class Program
             entries = new List<WeatherLogEntry>();
         }
 
-        // Add the new entry
         entries.Add(logEntry);
 
-        // Save the entries
         string newEntriesJson = JsonSerializer.Serialize(entries);
         File.WriteAllText("weatherLogEntries.json", newEntriesJson);
     }
@@ -142,11 +141,9 @@ class Program
 
     public static void PrintReport(int days)
     {
-        // Read the entries
         string entriesJson = File.ReadAllText("weatherLogEntries.json");
         List<WeatherLogEntry> entries = JsonSerializer.Deserialize<List<WeatherLogEntry>>(entriesJson);
 
-        // Filter the entries for the past days
         DateTime startDate = DateTime.Now.AddDays(-days);
         List<WeatherLogEntry> filteredEntries = entries.Where(e => e.Date >= startDate).ToList();
 
@@ -154,12 +151,10 @@ class Program
 
         foreach (var entry in filteredEntries)
         {
-            // Calculate the differences
             double temperatureDifference = Math.Round((double)(entry.UserMeasurements.air_temperature - entry.YrMeasurements.air_temperature), 1);
             double windSpeedDifference = Math.Round((double)(entry.UserMeasurements.wind_speed - entry.YrMeasurements.wind_speed), 1);
             double humidityDifference = Math.Round((double)(entry.UserMeasurements.relative_humidity - entry.YrMeasurements.relative_humidity), 1);
 
-            // Print the measurements and differences
             Console.WriteLine($"\nDate: {entry.Date.ToShortDateString()}");
             Console.WriteLine("\nUser's Measurements:");
             Console.WriteLine($"Air Temperature: {Math.Round((double)entry.UserMeasurements.air_temperature, 1)}°C");
@@ -177,17 +172,14 @@ class Program
 
     public static void PrintCurrentDayReport()
     {
-        // Read the entries
         string entriesJson = File.ReadAllText("weatherLogEntries.json");
         List<WeatherLogEntry> entries = JsonSerializer.Deserialize<List<WeatherLogEntry>>(entriesJson);
 
-        // Find the entry for the current day
         DateTime today = DateTime.Now.Date;
         WeatherLogEntry todayEntry = entries.Find(e => e.Date.Date == today);
 
         if (todayEntry != null)
         {
-            // Print the measurements and differences
             Console.WriteLine($"\nWeather Report for {DateTime.Now.Date}:");
             Console.WriteLine("\nUser's Measurements:");
             Console.WriteLine($"Air Temperature: {todayEntry.UserMeasurements.air_temperature}°C");
@@ -234,91 +226,8 @@ class Program
             entries.Add(entry);
         }
 
-        // Write the entries to the JSON file
         string entriesJson = JsonSerializer.Serialize(entries);
         File.WriteAllText("weatherLogEntries.json", entriesJson);
     }
 
-    public class WeatherForecast
-    {
-        public string type { get; set; }
-        public Geometry geometry { get; set; }
-        public Properties properties { get; set; }
-    }
-
-    public class Geometry
-    {
-        public string type { get; set; }
-        public List<double> coordinates { get; set; }
-    }
-
-    public class Properties
-    {
-        public Meta meta { get; set; }
-        public List<TimeData> timeseries { get; set; }
-    }
-
-    public class Meta
-    {
-        public string updated_at { get; set; }
-        public Units units { get; set; }
-    }
-
-    public class Units
-    {
-        public string air_pressure_at_sea_level { get; set; }
-        public string air_temperature { get; set; }
-        public string cloud_area_fraction { get; set; }
-        public string precipitation_amount { get; set; }
-        public string relative_humidity { get; set; }
-        public string wind_from_direction { get; set; }
-        public string wind_speed { get; set; }
-    }
-
-    public class TimeData
-    {
-        public string time { get; set; }
-        public Data data { get; set; }
-    }
-
-    public class Data
-    {
-        public Instant instant { get; set; }
-        public NextHours next_12_hours { get; set; }
-        public NextHours next_1_hours { get; set; }
-        public NextHours next_6_hours { get; set; }
-    }
-
-    public class Instant
-    {
-        public Details details { get; set; }
-    }
-
-    public class NextHours
-    {
-        public Summary summary { get; set; }
-        public Details details { get; set; }
-    }
-
-    public class Summary
-    {
-        public string symbol_code { get; set; }
-    }
-
-    public class Details
-    {
-        public double? precipitation_amount { get; set; }
-        public double? air_pressure_at_sea_level { get; set; }
-        public double? air_temperature { get; set; }
-        public double? cloud_area_fraction { get; set; }
-        public double? relative_humidity { get; set; }
-        public double? wind_from_direction { get; set; }
-        public double? wind_speed { get; set; }
-    }
-    public class WeatherLogEntry
-    {
-        public DateTime Date { get; set; }
-        public Details UserMeasurements { get; set; }
-        public Details YrMeasurements { get; set; }
-    }
 }
