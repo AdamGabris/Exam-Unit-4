@@ -52,6 +52,9 @@ class Program
             Console.WriteLine("Invalid city name. Please try again.");
         }
 
+        Details userMeasurements = GetUserMeasurements();
+
+
         string url = $"https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={coordinates.Latitude}&lon={coordinates.Longitude}";
 
         client.DefaultRequestHeaders.UserAgent.ParseAdd("Exam-Unit-4 (https://github.com/AdamGabris/Exam-Unit-4)");
@@ -63,11 +66,23 @@ class Program
 
             WeatherForecast forecast = JsonSerializer.Deserialize<WeatherForecast>(responseBody);
 
+            Details yrMeasurements = forecast.properties.timeseries[0].data.instant.details;
+
+            WeatherLogEntry logEntry = new WeatherLogEntry
+            {
+                Date = DateTime.Now,
+                UserMeasurements = userMeasurements,
+                YrMeasurements = yrMeasurements
+            };
+
             double? temperature = forecast.properties.timeseries[0].data.instant.details.air_temperature;
             double? windSpeed = forecast.properties.timeseries[0].data.instant.details.wind_speed;
+            double? humidity = forecast.properties.timeseries[0].data.instant.details.relative_humidity;
 
+            Console.WriteLine($"\nWeather forecast for the next hour in {chosenCity} :");
             Console.WriteLine($"Temperature: {temperature}°C");
             Console.WriteLine($"Wind Speed: {windSpeed} m/s");
+            Console.WriteLine($"Humidity: {humidity}%");
 
             File.WriteAllText("weather.json", responseBody);
         }
@@ -76,6 +91,25 @@ class Program
             Console.WriteLine("\nException Caught!");
             Console.WriteLine("Message :{0} ", e.Message);
         }
+
+
+
+    }
+
+    public static Details GetUserMeasurements()
+    {
+        Details userMeasurements = new Details();
+
+        Console.Write("Enter air temperature (°C): ");
+        userMeasurements.air_temperature = double.Parse(Console.ReadLine());
+
+        Console.Write("Enter wind speed (m/s): ");
+        userMeasurements.wind_speed = double.Parse(Console.ReadLine());
+
+        Console.Write("Enter relative humidity (%): ");
+        userMeasurements.relative_humidity = double.Parse(Console.ReadLine());
+
+        return userMeasurements;
     }
 
     public class WeatherForecast
@@ -153,5 +187,11 @@ class Program
         public double? relative_humidity { get; set; }
         public double? wind_from_direction { get; set; }
         public double? wind_speed { get; set; }
+    }
+    public class WeatherLogEntry
+    {
+        public DateTime Date { get; set; }
+        public Details UserMeasurements { get; set; }
+        public Details YrMeasurements { get; set; }
     }
 }
