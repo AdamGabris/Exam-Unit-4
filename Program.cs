@@ -13,6 +13,7 @@ class Program
     static async Task Main(string[] args)
     {
         Console.Clear();
+        GenerateSampleData(7);
         var cities = new Dictionary<string, (string Latitude, string Longitude)>
         {
             { "Grimstad", ("58.34", "8.59") },
@@ -74,17 +75,12 @@ class Program
                 UserMeasurements = userMeasurements,
                 YrMeasurements = yrMeasurements
             };
+            SaveLogEntry(logEntry);
 
-            double? temperature = forecast.properties.timeseries[0].data.instant.details.air_temperature;
-            double? windSpeed = forecast.properties.timeseries[0].data.instant.details.wind_speed;
-            double? humidity = forecast.properties.timeseries[0].data.instant.details.relative_humidity;
+            //PrintCurrentDayReport();
+            Print7DayReport();
+            //Print30DayReport();
 
-            Console.WriteLine($"\nWeather forecast for the next hour in {chosenCity} :");
-            Console.WriteLine($"Temperature: {temperature}°C");
-            Console.WriteLine($"Wind Speed: {windSpeed} m/s");
-            Console.WriteLine($"Humidity: {humidity}%");
-
-            File.WriteAllText("weather.json", responseBody);
         }
         catch (HttpRequestException e)
         {
@@ -110,6 +106,137 @@ class Program
         userMeasurements.relative_humidity = double.Parse(Console.ReadLine());
 
         return userMeasurements;
+    }
+
+    public static void SaveLogEntry(WeatherLogEntry logEntry)
+    {
+        // Read the existing entries
+        List<WeatherLogEntry> entries;
+        if (File.Exists("weatherLogEntries.json"))
+        {
+            string entriesJson = File.ReadAllText("weatherLogEntries.json");
+            entries = JsonSerializer.Deserialize<List<WeatherLogEntry>>(entriesJson);
+        }
+        else
+        {
+            entries = new List<WeatherLogEntry>();
+        }
+
+        // Add the new entry
+        entries.Add(logEntry);
+
+        // Save the entries
+        string newEntriesJson = JsonSerializer.Serialize(entries);
+        File.WriteAllText("weatherLogEntries.json", newEntriesJson);
+    }
+
+    public static void Print7DayReport()
+    {
+        PrintReport(7);
+    }
+
+    public static void Print30DayReport()
+    {
+        PrintReport(30);
+    }
+
+    public static void PrintReport(int days)
+    {
+        // Read the entries
+        string entriesJson = File.ReadAllText("weatherLogEntries.json");
+        List<WeatherLogEntry> entries = JsonSerializer.Deserialize<List<WeatherLogEntry>>(entriesJson);
+
+        // Filter the entries for the past days
+        DateTime startDate = DateTime.Now.AddDays(-days);
+        List<WeatherLogEntry> filteredEntries = entries.Where(e => e.Date >= startDate).ToList();
+
+        Console.WriteLine($"\n{days}-Day Weather Report:");
+
+        foreach (var entry in filteredEntries)
+        {
+            // Calculate the differences
+            double temperatureDifference = Math.Round((double)(entry.UserMeasurements.air_temperature - entry.YrMeasurements.air_temperature), 1);
+            double windSpeedDifference = Math.Round((double)(entry.UserMeasurements.wind_speed - entry.YrMeasurements.wind_speed), 1);
+            double humidityDifference = Math.Round((double)(entry.UserMeasurements.relative_humidity - entry.YrMeasurements.relative_humidity), 1);
+
+            // Print the measurements and differences
+            Console.WriteLine($"\nDate: {entry.Date.ToShortDateString()}");
+            Console.WriteLine("\nUser's Measurements:");
+            Console.WriteLine($"Air Temperature: {Math.Round((double)entry.UserMeasurements.air_temperature, 1)}°C");
+            Console.WriteLine($"Wind Speed: {Math.Round((double)entry.UserMeasurements.wind_speed, 1)} m/s");
+            Console.WriteLine($"Relative Humidity: {Math.Round((double)entry.UserMeasurements.relative_humidity, 1)}%");
+            Console.WriteLine("\nYR's Measurements:");
+            Console.WriteLine($"Air Temperature: {Math.Round((double)entry.YrMeasurements.air_temperature, 1)}°C");
+            Console.WriteLine($"Wind Speed: {Math.Round((double)entry.YrMeasurements.wind_speed, 1)} m/s");
+            Console.WriteLine($"Relative Humidity: {Math.Round((double)entry.YrMeasurements.relative_humidity, 1)}%");
+            Console.WriteLine($"\nTemperature Difference: {temperatureDifference}°C");
+            Console.WriteLine($"Wind Speed Difference: {windSpeedDifference} m/s");
+            Console.WriteLine($"Humidity Difference: {humidityDifference}%");
+        }
+    }
+
+    public static void PrintCurrentDayReport()
+    {
+        // Read the entries
+        string entriesJson = File.ReadAllText("weatherLogEntries.json");
+        List<WeatherLogEntry> entries = JsonSerializer.Deserialize<List<WeatherLogEntry>>(entriesJson);
+
+        // Find the entry for the current day
+        DateTime today = DateTime.Now.Date;
+        WeatherLogEntry todayEntry = entries.Find(e => e.Date.Date == today);
+
+        if (todayEntry != null)
+        {
+            // Print the measurements and differences
+            Console.WriteLine($"\nWeather Report for {DateTime.Now.Date}:");
+            Console.WriteLine("\nUser's Measurements:");
+            Console.WriteLine($"Air Temperature: {todayEntry.UserMeasurements.air_temperature}°C");
+            Console.WriteLine($"Wind Speed: {todayEntry.UserMeasurements.wind_speed} m/s");
+            Console.WriteLine($"Relative Humidity: {todayEntry.UserMeasurements.relative_humidity}%");
+            Console.WriteLine("\nYR's Measurements:");
+            Console.WriteLine($"Air Temperature: {todayEntry.YrMeasurements.air_temperature}°C");
+            Console.WriteLine($"Wind Speed: {todayEntry.YrMeasurements.wind_speed} m/s");
+            Console.WriteLine($"Relative Humidity: {todayEntry.YrMeasurements.relative_humidity}%");
+            Console.WriteLine($"\nTemperature Difference: {Math.Round((double)(todayEntry.UserMeasurements.air_temperature - todayEntry.YrMeasurements.air_temperature), 1)}°C");
+            Console.WriteLine($"Wind Speed Difference: {Math.Round((double)(todayEntry.UserMeasurements.wind_speed - todayEntry.YrMeasurements.wind_speed), 1)} m/s");
+            Console.WriteLine($"Humidity Difference: {Math.Round((double)(todayEntry.UserMeasurements.relative_humidity - todayEntry.YrMeasurements.relative_humidity), 1)}%");
+        }
+        else
+        {
+            Console.WriteLine("No weather data for today.");
+        }
+    }
+
+    public static void GenerateSampleData(int days)
+    {
+        Random random = new Random();
+        List<WeatherLogEntry> entries = new List<WeatherLogEntry>();
+
+        for (int i = 0; i < days; i++)
+        {
+            WeatherLogEntry entry = new WeatherLogEntry
+            {
+                Date = DateTime.Now.AddDays(-i),
+                UserMeasurements = new Details
+                {
+                    air_temperature = random.Next(-30, 40),
+                    wind_speed = random.Next(0, 20),
+                    relative_humidity = random.Next(0, 100)
+                },
+                YrMeasurements = new Details
+                {
+                    air_temperature = random.Next(-30, 40),
+                    wind_speed = random.Next(0, 20),
+                    relative_humidity = random.Next(0, 100)
+                }
+            };
+
+            entries.Add(entry);
+        }
+
+        // Write the entries to the JSON file
+        string entriesJson = JsonSerializer.Serialize(entries);
+        File.WriteAllText("weatherLogEntries.json", entriesJson);
     }
 
     public class WeatherForecast
